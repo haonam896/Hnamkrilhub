@@ -1,0 +1,67 @@
+local Tool = Instance.new("Tool")
+Tool.Name = "PunchTool"
+Tool.RequiresHandle = false
+Tool.CanBeDropped = false
+Tool.Parent = game:GetService("StarterPack")
+
+local Remote = Instance.new("RemoteEvent")
+Remote.Name = "PunchEvent"
+Remote.Parent = Tool
+
+local serverScript = Instance.new("Script")
+serverScript.Parent = Tool
+serverScript.Source = [[
+local Tool = script.Parent
+local Remote = Tool:WaitForChild("PunchEvent")
+local COOLDOWN = 2
+local DAMAGE = 60
+local KNOCKBACK = 50
+local lastPunch = {}
+
+Remote.OnServerEvent:Connect(function(player)
+	if lastPunch[player] and (tick() - lastPunch[player]) < COOLDOWN then return end
+	lastPunch[player] = tick()
+	local char = player.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	for _, target in ipairs(workspace:GetChildren()) do
+		if target:IsA("Model") and target ~= char and target:FindFirstChild("Humanoid") and target:FindFirstChild("HumanoidRootPart") then
+			local dist = (target.HumanoidRootPart.Position - hrp.Position).Magnitude
+			if dist <= 6 then
+				target.Humanoid:TakeDamage(DAMAGE)
+				local bv = Instance.new("BodyVelocity")
+				bv.Velocity = (target.HumanoidRootPart.Position - hrp.Position).Unit * KNOCKBACK
+				bv.MaxForce = Vector3.new(100000,100000,100000)
+				bv.Parent = target.HumanoidRootPart
+				game:GetService("Debris"):AddItem(bv,0.2)
+			end
+		end
+	end
+end)
+]]
+
+local localScript = Instance.new("LocalScript")
+localScript.Parent = Tool
+localScript.Source = [[
+local Tool = script.Parent
+local Remote = Tool:WaitForChild("PunchEvent")
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local anim = Instance.new("Animation")
+anim.AnimationId = "rbxassetid://507776043"
+local track = hum:LoadAnimation(anim)
+local cooldown = false
+local COOLDOWN = 2
+
+Tool.Activated:Connect(function()
+	if cooldown then return end
+	cooldown = true
+	if track then track:Play() end
+	Remote:FireServer()
+	task.delay(COOLDOWN, function()
+		cooldown = false
+	end)
+end)
+]]
